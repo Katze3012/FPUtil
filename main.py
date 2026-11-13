@@ -1,5 +1,11 @@
-import fp1point3
+import tkinter as tk
+from FPUtilGUI import GUI
+
 import fp4point9a
 
 if __name__ == "__main__":
-    fp4point9a.main()
+    root = tk.Tk()
+    app = GUI(root)
+    fp4point9a.main(app)
+    root.mainloop()
+
