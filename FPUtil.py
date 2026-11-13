@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.special import eval_hermite
 import matplotlib.pyplot as plt
 import csv
+from functools import partial
 
 def csvImporterAndParser(filename,delimiter='\t',decimal='.',skiprows=0):
     data = []
@@ -37,6 +39,17 @@ def specialFunctionSternGerlachCurve(x, a,q,z,c):
 def gaussianBeamIntensityCurve(x,a, mu, sigma, c):
     return a/(sigma**2)*np.exp(-2*(x - mu)**2 / (sigma**2))+c
 
+def higherModeGaussianBeamIntensityCurve(x,A, x0, w, offset,n):
+    u = np.sqrt(2) * (x - x0) / w
+    return A * eval_hermite(n, u) ** 2 * np.exp(-2 * (x - x0) ** 2 / w ** 2) + offset
+
+def temModel(n):
+    def model(x,A, x0, w, offset):
+        u = np.sqrt(2) * (x - x0) / w
+        return A * eval_hermite(n, u) ** 2 * np.exp(-2 * (x - x0) ** 2 / w ** 2) + offset
+        #return A/(sigma**2)*np.exp(-2*(x - mu)**2 / (sigma**2))*(eval_hermite(n,np.sqrt(2)*(x-mu)/sigma))**2+offset
+    return model
+
 def gaussianFit(data, a, mean, sigma, c):
     if not len(data)==2:
         data= np.transpose(data)
@@ -69,6 +82,22 @@ def gaussianBeamIntensityFit(data, a, mean, sigma, c):
     if not len(data)==2:
         data= np.transpose(data)
     popt,pcov = curve_fit(gaussianBeamIntensityCurve, data[0],data[1],p0=[a, mean, sigma, c])
+    perr = np.sqrt(np.diag(pcov))
+    return [popt,perr]
+
+def higherModeGaussianBeamIntensityFit(data,n):
+    offset0 = np.percentile(data[1],5)
+    yc = np.clip(data[1]-offset0,0,None)
+
+    x0 = np.sum(data[0]*yc)/np.sum(data[0])
+    var = np.sum(yc*(data[0]-x0)**2)/np.sum(yc)
+    w0 = 2* np.sqrt(var)/ np.sqrt(2*n+1)
+
+    model = temModel(n)
+    A0 = yc.max()/max(eval_hermite(n,0.0)**2,1)
+    p0 = [A0,x0,w0,offset0]
+
+    popt, pcov = curve_fit(model, data[0],data[1],p0=p0,maxfev=50000,bounds=([0,0,0,0],[np.inf,np.inf,np.inf,np.inf]))
     perr = np.sqrt(np.diag(pcov))
     return [popt,perr]
 
