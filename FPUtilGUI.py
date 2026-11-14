@@ -76,8 +76,8 @@ class GUI:
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         NavigationToolbar2Tk(self.canvas, root)
 
-    def registerPlot(self,name,func,n_plots=1,dataKey=None,controls = None,allData=False):
-        self.plots[name] = dict(func=func,n_plots=n_plots,controls=controls,dataKey=dataKey or name,allData=allData)
+    def registerPlot(self,name,func,n_plots=1,dataKey=None,controls = None,allData=False,projection=None):
+        self.plots[name] = dict(func=func,n_plots=n_plots,controls=controls,dataKey=dataKey or name,allData=allData,projection=projection)
         self.plot_box["values"] = list(self.plots)
         if not self.current_plot.get():
             self.plot_box.current(0)
@@ -108,11 +108,15 @@ class GUI:
             payload=self.get_data()
             empty = payload is None
         self.fig.clf()
-        axes = [self.fig.add_subplot(1,view["n_plots"],i+1)
+        axes = [self.fig.add_subplot(1,view["n_plots"],i+1,projection=view["projection"])
                 for i in range(view["n_plots"])]
 
         if empty:
-            axes[0].text(0.5,0.5,"For this view please load a file",ha="center",va="center",transform=axes[0].transAxes)
+            if view["projection"] is not None:
+                axes[0].text(0.5, 0.5, 0.5, "For this view please load a file", ha="center", va="center",
+                             transform=axes[0].transAxes)
+            else:
+                axes[0].text(0.5,0.5,"For this view please load a file",ha="center",va="center",transform=axes[0].transAxes)
         else:
             view["func"](axes, payload)
 
@@ -147,7 +151,12 @@ class GUI:
 
         for path in paths:
             try:
-                data = fp.csvImporterAndParser(path,delimiter=delimiter,decimal=decimal,skiprows=int(self.skiprows_var.get()))
+                if path.endswith(".csv") or path.endswith(".txt") or path.endswith(".dat"):
+                    data = fp.csvImporterAndParser(path,delimiter=delimiter,decimal=decimal,skiprows=int(self.skiprows_var.get()))
+                elif path.endswith(".bmp"):
+                    data = fp.bmpImporterAndParser(path)
+                else:
+                    data = []
                 files[os.path.basename(path)]=(path, data)
                 self.view_selected[key]=os.path.basename(path)
             except Exception as e:
@@ -188,7 +197,7 @@ class GUI:
         path = filedialog.askopenfilenames(
             title = f"Choose files for '{self.current_file.get()}'",
             initialdir = os.getcwd(),
-            filetypes = (("CSV, DAT and TXT files","*.csv *.dat *.txt"),("All files","*.*")),
+            filetypes = (("CSV, DAT and TXT files","*.csv *.dat *.txt"),("BMP files","*.bmp"),("All files","*.*")),
         )
         self.load_paths(path)
 

@@ -2,11 +2,13 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy.stats import rayleigh
 
 from FPUtilGUI import GUI
 import FPUtil
 import re
+
 
 def main(app):
 
@@ -147,7 +149,6 @@ def main(app):
             messagebox.showinfo("Error", "Please select a data file")
             return
         xaxis = np.linspace(0, stop=len(data[0]), num=len(data[0]))
-        print(getHermiteOrderX())
         popt1, perr1 = FPUtil.higherModeGaussianBeamIntensityFit([xaxis,data[0]],getHermiteOrderX())
         popt2, perr2 = FPUtil.higherModeGaussianBeamIntensityFit([xaxis, data[1]],getHermiteOrderY())
         ax1 = app.fig.axes[0]
@@ -166,7 +167,7 @@ def main(app):
 
 
     def higherModesControls(parent,app):
-        tk.Button(parent, text="Fit Gaussian Curve", command=lambda: higherModesFit(parent)).pack(side=tk.LEFT, padx=10,pady=5)
+        tk.Button(parent, text="Fit Hermite Gaussian Mode", command=lambda: higherModesFit(parent)).pack(side=tk.LEFT, padx=10,pady=5)
         ttk.Label(parent, text="Order of Hermite polynomials(mn):").pack(side=tk.LEFT,padx=(10,5))
         entryX = ttk.Entry(parent, width=8, textvariable=hermiteOrderX)
         entryY = ttk.Entry(parent, width=8, textvariable=hermiteOrderY)
@@ -177,6 +178,67 @@ def main(app):
         entryX.bind("<FocusOut>",lambda e: app.redraw())
         entryY.bind("<FocusOut>",lambda e: app.redraw())
 
+    def higherModes3D(axes,data):
+        ax = axes[0]
+        #step = max(1, max(data.shape) // 300)
+        z = data
+        y, x = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+        ax.plot_surface(x,y,z, cmap=plt.cm.viridis,alpha=0.5)
+
+    def higherModes3DControls(parent,app):
+        tk.Button(parent, text="Fit Hermite Gaussian Mode", command=lambda: higherModes3DFit(parent)).pack(side=tk.LEFT, padx=10,pady=5)
+        ttk.Label(parent, text="Order of Hermite polynomials(mn):").pack(side=tk.LEFT,padx=(10,5))
+        entryX = ttk.Entry(parent, width=8, textvariable=hermiteOrderX)
+        entryY = ttk.Entry(parent, width=8, textvariable=hermiteOrderY)
+        entryX.pack(side=tk.LEFT)
+        entryY.pack(side=tk.LEFT)
+        entryX.bind("<Return>",lambda e: app.redraw())
+        entryY.bind("<Return>",lambda e: app.redraw())
+        entryX.bind("<FocusOut>",lambda e: app.redraw())
+        entryY.bind("<FocusOut>",lambda e: app.redraw())
+
+    def higherModes3DFit(parent):
+        data = app.get_data()
+        if data is None:
+            messagebox.showinfo("Error", "No data available")
+            return
+        n, m = getHermiteOrderX(), getHermiteOrderY()
+        popt, perr, p0 = FPUtil.higherModeGaussianBeamIntensity3DFit(data, n, m)
+
+        step = 4
+        yy, xx = np.mgrid[0:data.shape[0]:step, 0:data.shape[1]:step]
+        fit = FPUtil.temModel3D(n, m)((xx, yy), *popt).reshape(xx.shape)
+
+        ax = app.fig.axes[1]
+        ax.plot_surface(xx, yy, fit, cmap=plt.cm.inferno)
+        app.canvas.draw()
+        app.set_results(
+            f"Fitting results: \n"
+            f"A = {popt[0]} ± {perr[0]};\n"
+            f"x0 ={popt[1]} ± {perr[1]};\n"
+            f"y0={popt[2]} ± {perr[2]};\n"
+            f"wx ={popt[3]} ± {perr[3]};\n"
+            f"wy ={popt[4]} ± {perr[4]};\n"
+            f"c ={popt[5]} ± {perr[5]};\n"
+            f"theta ={popt[6]} ± {perr[6]};\n"
+        )
+
+    # Letzte Version bevor ich aufgegeben habe und Claude den Rest fixen lassen hab
+    #def higherModes3DFit(parent):
+    #    data = app.get_data()
+    #    if data is None:
+    #        messagebox.showinfo("Error", "No data available")
+    #        return
+    #    popt,perr,p0 = FPUtil.higherModeGaussianBeamIntensity3DFit(data,getHermiteOrderX(),getHermiteOrderY())
+    #    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    #    ax = app.fig.axes[0]
+    #    ax.plot_surface(xx, yy, FPUtil.higherModeGaussianBeamIntensity3DCurve([xx, yy], *p0, getHermiteOrderX(), getHermiteOrderY()), cmap=plt.cm.ocean)
+    #    #ax.plot_surface(xx,yy,FPUtil.higherModeGaussianBeamIntensity3DCurve([xx,yy],*popt,getHermiteOrderX(),getHermiteOrderY()),cmap=plt.cm.inferno)
+    #    app.fig.canvas.draw()
+    #    print(popt)
+    #    return
+
     app.registerPlot("Single Gaussian Beam",singleGaussianView,n_plots=2,controls=singleGaussianControls)
     app.registerPlot("Beam Width",beamWidth,n_plots=1,allData=True,controls=beamWidthControls)
     app.registerPlot("Higher Modes",higherModes,n_plots=2,controls=higherModesControls)
+    app.registerPlot("Higher Modes 3D", higherModes3D,n_plots=2,projection="3d",controls=higherModes3DControls)
