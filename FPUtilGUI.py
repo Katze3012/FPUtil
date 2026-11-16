@@ -70,7 +70,7 @@ class GUI:
         tk.Button(self.controls, text="Select folder...", command=self.choose_folder).pack(side=tk.LEFT, padx=10, pady=10)
         tk.Label(self.controls, textvariable=self.selectedFile, wraplength=400).pack(side=tk.LEFT,padx=10, pady=(0, 10))
 
-        self.fig = Figure(figsize=(10,4),dpi=100)
+        self.fig = Figure(figsize=(10,4),dpi=200)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=root)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
