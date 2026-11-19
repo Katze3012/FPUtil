@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import csv
 from PIL import Image
 from scipy.ndimage import uniform_filter
+from scipy.ndimage import uniform_filter1d
 
 def csvImporterAndParser(filename,delimiter='\t',decimal='.',skiprows=0):
     data = []
@@ -112,41 +113,30 @@ def gaussianBeamIntensityFit(data, a, mean, sigma, c):
     perr = np.sqrt(np.diag(pcov))
     return [popt,perr]
 
-def higherModeGaussianBeamIntensityFit(data,n):
-    offset0 = np.percentile(data[1],5)
-    yc = np.clip(data[1]-offset0,0,None)
+def higherModeGaussianBeamIntensityFit(data, n):
+    x = np.asarray(data[0], dtype=float)
+    y = np.asarray(data[1], dtype=float)
 
-    x0 = np.sum(data[0]*yc)/np.sum(data[0])
-    var = np.sum(yc*(data[0]-x0)**2)/np.sum(yc)
-    w0 = 2* np.sqrt(var)/ np.sqrt(2*n+1)
+    sm = uniform_filter1d(y, 9)
+    offset0 = np.percentile(sm, 5)
+    yc = np.clip(sm - offset0, 0, None)
+    yc[yc < 0.1 * yc.max()] = 0                 # Rauschrand ausblenden
 
-    model = temModel(n)
-    A0 = yc.max()/max(eval_hermite(n,0.0)**2,1)
-    p0 = [A0,x0,w0,offset0]
+    x0 = np.sum(x * yc) / np.sum(yc)            # korrekt normiert
+    var = np.sum(yc * (x - x0) ** 2) / np.sum(yc)
+    w0 = 2 * np.sqrt(var) / np.sqrt(2 * n + 1)
 
-    popt, pcov = curve_fit(model, data[0],data[1],p0=p0,maxfev=50000,bounds=([0,0,0,0],[np.inf,np.inf,np.inf,np.inf]))
-    perr = np.sqrt(np.diag(pcov))
-    return [popt,perr]
+    unit = higherModeGaussianBeamIntensityCurve(x, 1, x0, w0, 0, n)
+    A0 = yc.max() / unit.max()
 
-# Letzte Version bevor ich aufgegeben habe und Claude den Rest fixen lassen hab
-#def higherModeGaussianBeamIntensity3DFit(data,n,m):
-#    data = np.asarray(data,dtype=float)
-#    print(n,m,type(n), type(m))
-#    model3D = temModel3D(n,m)
-#    yy,xx = np.mgrid[0:data.shape[0],0:data.shape[1]]
-#
-#    offset0 = np.percentile(data,5)
-#    zc = np.clip(data-offset0,0,None)
-#    s=data.sum()
-#    x0 = (xx * zc).sum() / s
-#    y0 = (yy * zc).sum() / s
-#    wx0 = 2/np.sqrt(2*n+1)*np.sqrt((zc * (xx - x0) ** 2).sum() / s)
-#    wy0 = 2/np.sqrt(2*m+1) * np.sqrt((zc * (yy - y0) ** 2).sum() / s)
-#    p0 = [zc.max(), 350, 350, wx0, wy0, offset0,0]
-#    print(p0)
-#    popt,pcov = curve_fit(model3D,(xx,yy),data.ravel(),p0=p0,maxfev=20000,bounds=([0,0,1,1,0,0,-np.pi],[np.inf,np.inf,1e4,1e4,np.inf,np.inf,np.pi]))
-#    perr = np.sqrt(np.diag(pcov))
-#    return [popt,perr,p0]
+    def model(x, A, x0, w, offset):
+        return higherModeGaussianBeamIntensityCurve(x, A, x0, w, offset, n)
+
+    p0 = [A0, x0, w0, offset0]
+    lower = [0, x.min(), 1, -np.inf]
+    upper = [np.inf, x.max(), len(x), np.inf]
+    popt, pcov = curve_fit(model, x, y, p0=p0, bounds=(lower, upper), maxfev=50000)
+    return [popt, np.sqrt(np.diag(pcov))]
 
 def higherModeGaussianBeamIntensity3DFit(data, n, m, step=4):
     data = np.asarray(data, dtype=float)
