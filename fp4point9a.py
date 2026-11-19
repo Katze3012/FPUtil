@@ -41,8 +41,8 @@ def main(app):
         popt2, perr2 = FPUtil.gaussianBeamIntensityFit([xaxis, data[1]], 400000, np.argmax(data[1]), 20, 0)
         ax1 = app.fig.axes[0]
         ax2 = app.fig.axes[1]
-        ax1.plot(xaxis, FPUtil.gaussianBeamIntensityCurve(xaxis, *popt1), "red")
-        ax2.plot(xaxis, FPUtil.gaussianBeamIntensityCurve(xaxis, *popt2), "blue")
+        ax1.plot(xaxis, FPUtil.gaussianBeamIntensityCurve(xaxis, *popt1), "coral")
+        ax2.plot(xaxis, FPUtil.gaussianBeamIntensityCurve(xaxis, *popt2), "coral")
         app.fig.canvas.draw()
         app.set_results(
             f"Fitting results: \n"
@@ -56,11 +56,11 @@ def main(app):
     def singleGaussianView(axes,data):
         data=data.T
         ax1, ax2 = axes
-        ax1.plot(data[0],'b')
-        ax2.plot(data[1],'r')
+        ax1.plot(data[0],'tab:gray')
+        ax2.plot(data[1],'tab:gray')
         ax1.grid()
-        ax1.title.set_text("Zeilen")
-        ax2.title.set_text("Spalten")
+        ax1.title.set_text("Spalten")
+        ax2.title.set_text("Zeilen")
         ax1.set_xlabel("Pixel")
         ax2.set_xlabel("Pixel")
         ax1.set_ylabel("Intensität")
@@ -126,17 +126,17 @@ def main(app):
         rayleighLength=np.sqrt( ((2*0.45-xaxis) *xaxis) /4)
         oldBeamWidth = beamWidthAtResonator*np.sqrt((1+(xaxis/2)**2/(rayleighLength**2)))
         newBeamWidth = oldBeamWidth*np.sqrt(1+0.08**2/(np.pi*oldBeamWidth**2/632.8e-9)**2)
-        ax.plot(xaxis*100, newBeamWidth*1e6, color="tab:orange")
+        ax.plot(xaxis*100, newBeamWidth*1e6, color="tab:gray")
         app.fig.canvas.draw()
 
     def higherModes(axes,data):
         data =data.T
         ax1, ax2 = axes
-        ax1.plot(data[0], 'b')
-        ax2.plot(data[1], 'r')
+        ax1.plot(data[0], 'tab:gray')
+        ax2.plot(data[1], 'tab:gray')
         ax1.grid()
-        ax1.title.set_text("Zeilen")
-        ax2.title.set_text("Spalten")
+        ax1.title.set_text("Spalten")
+        ax2.title.set_text("Zeilen")
         ax1.set_xlabel("Pixel")
         ax2.set_xlabel("Pixel")
         ax1.set_ylabel("Intensität")
@@ -153,18 +153,17 @@ def main(app):
         popt2, perr2 = FPUtil.higherModeGaussianBeamIntensityFit([xaxis, data[1]],getHermiteOrderY())
         ax1 = app.fig.axes[0]
         ax2 = app.fig.axes[1]
-        ax1.plot(xaxis, FPUtil.higherModeGaussianBeamIntensityCurve(xaxis, *popt1,getHermiteOrderX()), "red")
-        ax2.plot(xaxis, FPUtil.higherModeGaussianBeamIntensityCurve(xaxis, *popt2,getHermiteOrderY()), "blue")
+        ax1.plot(xaxis, FPUtil.higherModeGaussianBeamIntensityCurve(xaxis, *popt1,getHermiteOrderX()), "coral")
+        ax2.plot(xaxis, FPUtil.higherModeGaussianBeamIntensityCurve(xaxis, *popt2,getHermiteOrderY()), "coral")
         app.fig.canvas.draw()
         app.set_results(
             f"Fitting results: \n"
             f"A_x = {popt1[0]} ± {perr1[0]}; A_y = {popt2[0]} ± {perr2[0]} \n"
-            f"mu_x ={popt1[1]} ± {perr1[1]}; mu_y = {popt2[1]} ± {perr2[1]} \n"
-            f"w_x ={popt1[2]} ± {perr1[2]}; w_y = {popt2[2]} ± {perr2[2]} \n"
+            f"x0 ={popt1[1]} ± {perr1[1]}; y0 = {popt2[1]} ± {perr2[1]} \n"
+            f"w_x ={popt1[2]*6.3} ± {perr1[2]*6.3}; w_y = {popt2[2]*6.3} ± {perr2[2]*6.3} \n"
             f"c_x ={popt1[3]} ± {perr1[3]}; c_y = {popt2[3]} ± {perr2[3]}"
         )
         return
-
 
     def higherModesControls(parent,app):
         tk.Button(parent, text="Fit Hermite Gaussian Mode", command=lambda: higherModesFit(parent)).pack(side=tk.LEFT, padx=10,pady=5)
@@ -181,9 +180,9 @@ def main(app):
     def higherModes3D(axes,data):
         ax = axes[0]
         #step = max(1, max(data.shape) // 300)
-        z = data
+        z = data**1.6
         y, x = np.mgrid[0:data.shape[0], 0:data.shape[1]]
-        ax.plot_surface(x,y,z, cmap=plt.cm.viridis,alpha=0.5)
+        ax.plot_surface(x,y,z, cmap=plt.cm.viridis)
 
     def higherModes3DControls(parent,app):
         tk.Button(parent, text="Fit Hermite Gaussian Mode", command=lambda: higherModes3DFit(parent)).pack(side=tk.LEFT, padx=10,pady=5)
@@ -203,7 +202,7 @@ def main(app):
             messagebox.showinfo("Error", "No data available")
             return
         n, m = getHermiteOrderX(), getHermiteOrderY()
-        popt, perr, p0 = FPUtil.higherModeGaussianBeamIntensity3DFit(data, n, m)
+        popt, perr, p0 = FPUtil.higherModeGaussianBeamIntensity3DFit(data**1.6, n, m)
 
         step = 4
         yy, xx = np.mgrid[0:data.shape[0]:step, 0:data.shape[1]:step]
@@ -215,28 +214,13 @@ def main(app):
         app.set_results(
             f"Fitting results: \n"
             f"A = {popt[0]} ± {perr[0]};\n"
-            f"x0 ={popt[1]} ± {perr[1]};\n"
-            f"y0={popt[2]} ± {perr[2]};\n"
-            f"wx ={popt[3]} ± {perr[3]};\n"
-            f"wy ={popt[4]} ± {perr[4]};\n"
+            f"x0 ={popt[1]*6.3} ± {perr[1]*6.3};\n"
+            f"y0={popt[2]*6.3} ± {perr[2]*6.3};\n"
+            f"wx ={popt[3]*6.3} ± {perr[3]*6.3};\n"
+            f"wy ={popt[4]*6.3} ± {perr[4]*6.3};\n"
             f"c ={popt[5]} ± {perr[5]};\n"
             f"theta ={popt[6]} ± {perr[6]};\n"
         )
-
-    # Letzte Version bevor ich aufgegeben habe und Claude den Rest fixen lassen hab
-    #def higherModes3DFit(parent):
-    #    data = app.get_data()
-    #    if data is None:
-    #        messagebox.showinfo("Error", "No data available")
-    #        return
-    #    popt,perr,p0 = FPUtil.higherModeGaussianBeamIntensity3DFit(data,getHermiteOrderX(),getHermiteOrderY())
-    #    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
-    #    ax = app.fig.axes[0]
-    #    ax.plot_surface(xx, yy, FPUtil.higherModeGaussianBeamIntensity3DCurve([xx, yy], *p0, getHermiteOrderX(), getHermiteOrderY()), cmap=plt.cm.ocean)
-    #    #ax.plot_surface(xx,yy,FPUtil.higherModeGaussianBeamIntensity3DCurve([xx,yy],*popt,getHermiteOrderX(),getHermiteOrderY()),cmap=plt.cm.inferno)
-    #    app.fig.canvas.draw()
-    #    print(popt)
-    #    return
 
     app.registerPlot("Single Gaussian Beam",singleGaussianView,n_plots=2,controls=singleGaussianControls)
     app.registerPlot("Beam Width",beamWidth,n_plots=1,allData=True,controls=beamWidthControls)
